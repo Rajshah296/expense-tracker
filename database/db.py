@@ -5,6 +5,24 @@ from werkzeug.security import generate_password_hash
 DATABASE = 'spendly.db'
 
 
+def get_user_by_email(email: str):
+    """Get a user by email address. Returns sqlite3.Row or None."""
+    db = get_db()
+    cursor = db.execute('SELECT * FROM users WHERE email = ?', (email,))
+    return cursor.fetchone()
+
+
+def create_user(name: str, email: str, password_hash: str) -> int:
+    """Create a new user and return the new user's ID."""
+    db = get_db()
+    cursor = db.execute(
+        'INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)',
+        (name, email, password_hash)
+    )
+    db.commit()
+    return cursor.lastrowid
+
+
 def get_db():
     """Get the database connection for the current request context."""
     db = getattr(g, '_database', None)

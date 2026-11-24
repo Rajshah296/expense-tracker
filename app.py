@@ -1,7 +1,9 @@
-from flask import Flask, render_template
-from database.db import get_db, close_db, init_db, seed_db
+from flask import Flask, render_template, request, session, redirect, url_for, flash
+from werkzeug.security import generate_password_hash
+from database.db import get_db, close_db, init_db, seed_db, get_user_by_email, create_user
 
 app = Flask(__name__)
+app.secret_key = 'dev-secret-change-in-production'
 
 app.teardown_appcontext(close_db)
 
@@ -19,8 +21,36 @@ def landing():
     return render_template("landing.html")
 
 
-@app.route("/register")
+@app.route("/register", methods=["GET", "POST"])
 def register():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        # Validation
+        if not name or not email or not password:
+            return render_template("register.html", error="All fields are required")
+        if "@" not in email or "." not in email:
+            return render_template("register.html", error="Invalid email format")
+        if len(password) < 8:
+            return render_template("register.html", error="Password must be at least 8 characters")
+
+        # Check duplicate email
+        if get_user_by_email(email):
+            return render_template("register.html", error="Email already registered")
+
+        # Create user
+        password_hash = generate_password_hash(password)
+        user_id = create_user(name, email, password_hash)
+
+        # Start session
+        session["user_id"] = user_id
+        session["user_name"] = name
+
+        flash("Account created successfully!")
+        return redirect(url_for("profile"))
+
     return render_template("register.html")
 
 
@@ -45,7 +75,9 @@ def privacy():
 
 @app.route("/logout")
 def logout():
-    return "Logout — coming in Step 3"
+    session.clear()
+    flash("You have been logged out")
+    return redirect(url_for("landing"))
 
 
 @app.route("/profile")
