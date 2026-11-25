@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, session, redirect, url_for, flash
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from database.db import get_db, close_db, init_db, seed_db, get_user_by_email, create_user
 
 app = Flask(__name__)
@@ -23,6 +23,10 @@ def landing():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    # Redirect logged-in users to landing page
+    if "user_id" in session:
+        return redirect(url_for("landing"))
+
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         email = request.form.get("email", "").strip().lower()
@@ -54,8 +58,32 @@ def register():
     return render_template("register.html")
 
 
-@app.route("/login")
+@app.route("/login", methods=["GET", "POST"])
 def login():
+    # Redirect logged-in users to landing page
+    if "user_id" in session:
+        return redirect(url_for("landing"))
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        # Validation
+        if not email or not password:
+            return render_template("login.html", error="Both fields are required")
+
+        # Look up user
+        user = get_user_by_email(email)
+        if not user or not check_password_hash(user["password_hash"], password):
+            return render_template("login.html", error="Invalid email or password")
+
+        # Start session
+        session["user_id"] = user["id"]
+        session["user_name"] = user["name"]
+
+        flash("Signed in successfully!")
+        return redirect(url_for("profile"))
+
     return render_template("login.html")
 
 
