@@ -1,0 +1,143 @@
+/* ------------------------------------------------------------------ */
+/* Profile page — filter bar                                           */
+/* ------------------------------------------------------------------ */
+
+.filter-bar-card {
+    padding: 1rem 1.5rem;
+}
+
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+}
+
+.filter-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.filter-preset {
+    display: inline-block;
+    padding: 0.4rem 0.875rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--ink-muted);
+    background: var(--paper-warm);
+    border: 1px solid var(--border-soft);
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.filter-preset:hover {
+    color: var(--ink);
+    border-color: var(--accent);
+    background: var(--accent-light);
+}
+
+.filter-preset.active {
+    color: var(--paper);
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.filter-custom {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.filter-custom input[type="date"] {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+    color: var(--ink);
+    background: var(--paper);
+    outline: none;
+    transition: border-color 0.2s;
+    min-width: 150px;
+}
+
+.filter-custom input[type="date"]:focus {
+    border-color: var(--accent);
+}
+
+.filter-custom input[type="date"]::placeholder {
+    color: var(--ink-faint);
+}
+
+.date-separator {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    white-space: nowrap;
+}
+
+.filter-custom .btn-primary {
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+}
+
+/* Empty state */
+.empty-state {
+    text-align: center;
+    color: var(--ink-muted);
+    padding: 2rem;
+    font-size: 0.9rem;
+}
+
+/* Flash messages */
+.flash-messages {
+    margin-bottom: 1rem;
+}
+
+.flash {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    background: var(--error-light);
+    border: 1px solid var(--error);
+    color: var(--error-dark);
+    font-size: 0.9rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filter-presets {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .filter-preset {
+        flex: 1;
+        text-align: center;
+        min-width: 0;
+    }
+
+    .filter-custom {
+        margin-left: 0;
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .filter-custom input[type="date"] {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .date-separator {
+        display: none;
+    }
+}

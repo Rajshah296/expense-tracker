@@ -35,32 +35,48 @@ def get_user_by_id(user_id: int):
     }
 
 
-def get_summary_stats(user_id: int):
+def get_summary_stats(user_id: int, date_from: str = None, date_to: str = None):
     """Compute summary statistics for a user.
 
     Returns:
         dict with keys: total_spent (float), transaction_count (int), top_category (str)
     """
     db = get_db()
-    row = db.execute('''
+
+    # Build base query and params
+    base_query = '''
         SELECT
             COALESCE(SUM(amount), 0) as total_spent,
             COUNT(*) as transaction_count
         FROM expenses WHERE user_id = ?
-    ''', (user_id,)).fetchone()
+    '''
+    params = [user_id]
+    if date_from and date_to:
+        base_query += " AND date BETWEEN ? AND ?"
+        params.extend([date_from, date_to])
+
+    row = db.execute(base_query, params).fetchone()
 
     total_spent = row['total_spent'] or 0.0
     transaction_count = row['transaction_count'] or 0
 
     # Find top category by total amount
-    top_category_row = db.execute('''
+    top_category_query = '''
         SELECT category
         FROM expenses
         WHERE user_id = ?
+    '''
+    top_category_params = [user_id]
+    if date_from and date_to:
+        top_category_query += " AND date BETWEEN ? AND ?"
+        top_category_params.extend([date_from, date_to])
+    top_category_query += '''
         GROUP BY category
         ORDER BY SUM(amount) DESC
         LIMIT 1
-    ''', (user_id,)).fetchone()
+    '''
+
+    top_category_row = db.execute(top_category_query, top_category_params).fetchone()
 
     top_category = top_category_row['category'] if top_category_row else '—'
 
@@ -71,20 +87,31 @@ def get_summary_stats(user_id: int):
     }
 
 
-def get_recent_transactions(user_id: int, limit: int = 10):
+def get_recent_transactions(user_id: int, date_from: str = None, date_to: str = None, limit: int = 10):
     """Fetch recent transactions for a user, newest first.
 
     Returns:
         List of dicts with keys: date, description, category, amount
     """
     db = get_db()
-    rows = db.execute('''
+
+    # Build base query and params
+    base_query = '''
         SELECT date, description, category, amount
         FROM expenses
         WHERE user_id = ?
+    '''
+    params = [user_id]
+    if date_from and date_to:
+        base_query += " AND date BETWEEN ? AND ?"
+        params.extend([date_from, date_to])
+    base_query += '''
         ORDER BY date DESC, created_at DESC
         LIMIT ?
-    ''', (user_id, limit)).fetchall()
+    '''
+    params.append(limit)
+
+    rows = db.execute(base_query, params).fetchall()
 
     return [
         {
@@ -97,7 +124,7 @@ def get_recent_transactions(user_id: int, limit: int = 10):
     ]
 
 
-def get_category_breakdown(user_id: int):
+def get_category_breakdown(user_id: int, date_from: str = None, date_to: str = None):
     """Get per-category breakdown with percentages.
 
     Returns:
@@ -105,13 +132,23 @@ def get_category_breakdown(user_id: int):
         Ordered by total descending. Percentages sum to 100.
     """
     db = get_db()
-    rows = db.execute('''
+
+    # Build base query and params
+    base_query = '''
         SELECT category, SUM(amount) as total
         FROM expenses
         WHERE user_id = ?
+    '''
+    params = [user_id]
+    if date_from and date_to:
+        base_query += " AND date BETWEEN ? AND ?"
+        params.extend([date_from, date_to])
+    base_query += '''
         GROUP BY category
         ORDER BY total DESC
-    ''', (user_id,)).fetchall()
+    '''
+
+    rows = db.execute(base_query, params).fetchall()
 
     if not rows:
         return []

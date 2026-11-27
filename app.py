@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, session, redirect, url_for, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from database.db import get_db, close_db, init_db, seed_db, get_user_by_email, create_user
 from database.queries import get_user_by_id, get_summary_stats, get_recent_transactions, get_category_breakdown
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 app.secret_key = 'dev-secret-change-in-production'
@@ -109,6 +110,40 @@ def logout():
     return redirect(url_for("landing"))
 
 
+def _parse_date(date_str: str):
+    """Parse ISO date string, return None if invalid."""
+    if not date_str:
+        return None
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
+def _compute_preset_dates(preset: str):
+    """Compute date_from and date_to for a given preset."""
+    today = datetime.now().date()
+
+    if preset == "this-month":
+        # First day of current month to today
+        date_from = today.replace(day=1)
+        date_to = today
+    elif preset == "last-3-months":
+        # 3 months ago to today
+        date_from = today - timedelta(days=90)
+        date_to = today
+    elif preset == "last-6-months":
+        # 6 months ago to today
+        date_from = today - timedelta(days=180)
+        date_to = today
+    elif preset == "all-time":
+        return None, None
+    else:
+        return None, None
+
+    return date_from.isoformat(), date_to.isoformat()
+
+
 @app.route("/profile")
 def profile():
     # Authentication guard
@@ -124,16 +159,73 @@ def profile():
         session.clear()
         return redirect(url_for("login"))
 
-    summary = get_summary_stats(user_id)
-    transactions = get_recent_transactions(user_id)
-    categories = get_category_breakdown(user_id)
+    # Handle date filtering
+    date_from = _parse_date(request.args.get("date_from"))
+    date_to = _parse_date(request.args.get("date_to"))
+    preset = request.args.get("preset")
+
+    # If preset is provided, compute dates from preset (overrides manual dates)
+    if preset and preset in ("this-month", "last-3-months", "last-6-months", "all-time"):
+        date_from, date_to = _compute_preset_dates(preset)
+
+    # Validate date range
+    active_preset = "all-time"
+    if date_from and date_to:
+        if date_from > date_to:
+            flash("Start date must be before end date.")
+            date_from = None
+            date_to = None
+        else:
+            # Determine active preset for UI highlighting
+            if preset:
+                active_preset = preset
+            else:
+                active_preset = "custom"
+    elif preset == "all-time":
+        active_preset = "all-time"
+        date_from = None
+        date_to = None
+    else:
+        active_preset = "all-time"
+        date_from = None
+        date_to = None
+
+    # Convert date objects to strings for query helpers
+    date_from_str = date_from if isinstance(date_from, str) else (date_from.isoformat() if date_from else None)
+    date_to_str = date_to if isinstance(date_to, str) else (date_to.isoformat() if date_to else None)
+
+    summary = get_summary_stats(user_id, date_from_str, date_to_str)
+    transactions = get_recent_transactions(user_id, date_from=date_from_str, date_to=date_to_str)
+    categories = get_category_breakdown(user_id, date_from_str, date_to_str)
+
+    # Preset URLs for filter bar
+    preset_urls = {
+        "this-month": url_for("profile", preset="this-month"),
+        "last-3-months": url_for("profile", preset="last-3-months"),
+        "last-6-months": url_for("profile", preset="last-6-months"),
+        "all-time": url_for("profile", preset="all-time"),
+    }
+
+    # Human-readable filter label
+    filter_labels = {
+        "this-month": "This Month",
+        "last-3-months": "Last 3 Months",
+        "last-6-months": "Last 6 Months",
+        "all-time": "All Time",
+        "custom": f"Custom ({date_from_str} to {date_to_str})" if date_from_str and date_to_str else "All Time"
+    }
 
     return render_template(
         "profile.html",
         user=user,
         summary=summary,
         transactions=transactions,
-        categories=categories
+        categories=categories,
+        active_preset=active_preset,
+        preset_urls=preset_urls,
+        filter_labels=filter_labels,
+        date_from=date_from_str,
+        date_to=date_to_str
     )
 
 
