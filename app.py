@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, session, redirect, url_for, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from database.db import get_db, close_db, init_db, seed_db, get_user_by_email, create_user
+from database.queries import get_user_by_id, get_summary_stats, get_recent_transactions, get_category_breakdown
 
 app = Flask(__name__)
 app.secret_key = 'dev-secret-change-in-production'
@@ -114,43 +115,18 @@ def profile():
     if "user_id" not in session:
         return redirect(url_for("login"))
 
-    # Hardcoded user info (in Step 5 this will come from DB)
-    user = {
-        "name": session.get("user_name", "Demo User"),
-        "email": "demo@spendly.com",
-        "member_since": "November 2026",
-        "initials": session.get("user_name", "Demo User")[0].upper()
-    }
+    user_id = session["user_id"]
 
-    # Hardcoded summary stats
-    summary = {
-        "total_spent": 440.29,
-        "transaction_count": 8,
-        "top_category": "Food"
-    }
+    # Fetch real data from database
+    user = get_user_by_id(user_id)
+    if user is None:
+        # User not found — clear session and redirect to login
+        session.clear()
+        return redirect(url_for("login"))
 
-    # Hardcoded transaction history (matches seed_db data)
-    transactions = [
-        {"date": "2026-11-18", "description": "Stationery and pens", "category": "Other", "amount": 18.00},
-        {"date": "2026-11-15", "description": "New running shoes", "category": "Shopping", "amount": 89.99},
-        {"date": "2026-11-12", "description": "Movie tickets and snacks", "category": "Entertainment", "amount": 55.00},
-        {"date": "2026-11-10", "description": "Grocery shopping at local market", "category": "Food", "amount": 32.80},
-        {"date": "2026-11-08", "description": "Pharmacy prescription refill", "category": "Health", "amount": 65.00},
-        {"date": "2026-11-05", "description": "Electric utility bill", "category": "Bills", "amount": 120.00},
-        {"date": "2026-11-03", "description": "Monthly subway pass", "category": "Transport", "amount": 45.00},
-        {"date": "2026-11-01", "description": "Morning coffee and pastry", "category": "Food", "amount": 14.50},
-    ]
-
-    # Hardcoded category breakdown (totals from seed data)
-    categories = [
-        {"category": "Food", "total": 47.30, "percentage": 11},
-        {"category": "Transport", "total": 45.00, "percentage": 10},
-        {"category": "Bills", "total": 120.00, "percentage": 27},
-        {"category": "Health", "total": 65.00, "percentage": 15},
-        {"category": "Entertainment", "total": 55.00, "percentage": 12},
-        {"category": "Shopping", "total": 89.99, "percentage": 20},
-        {"category": "Other", "total": 18.00, "percentage": 4},
-    ]
+    summary = get_summary_stats(user_id)
+    transactions = get_recent_transactions(user_id)
+    categories = get_category_breakdown(user_id)
 
     return render_template(
         "profile.html",
