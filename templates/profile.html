@@ -2,6 +2,10 @@
 
 {% block title %}Profile — Spendly{% endblock %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
 {% block content %}
 
 <section class="profile-section">
@@ -16,6 +20,35 @@
                     <p class="profile-email">{{ user.email }}</p>
                     <p class="profile-meta">Member since {{ user.member_since }}</p>
                 </div>
+            </div>
+        </div>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <div class="flash-messages">
+                {% for msg in messages %}
+                <div class="flash">{{ msg }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Filter Bar -->
+        <div class="profile-card filter-bar-card">
+            <div class="filter-bar">
+                <div class="filter-presets">
+                    <a href="{{ preset_urls['this-month'] }}" class="filter-preset {% if active_preset == 'this-month' %}active{% endif %}" data-preset="this-month">{{ filter_labels['this-month'] }}</a>
+                    <a href="{{ preset_urls['last-3-months'] }}" class="filter-preset {% if active_preset == 'last-3-months' %}active{% endif %}" data-preset="last-3-months">{{ filter_labels['last-3-months'] }}</a>
+                    <a href="{{ preset_urls['last-6-months'] }}" class="filter-preset {% if active_preset == 'last-6-months' %}active{% endif %}" data-preset="last-6-months">{{ filter_labels['last-6-months'] }}</a>
+                    <a href="{{ preset_urls['all-time'] }}" class="filter-preset {% if active_preset == 'all-time' %}active{% endif %}" data-preset="all-time">{{ filter_labels['all-time'] }}</a>
+                </div>
+                <form class="filter-custom" method="GET" action="{{ url_for('profile') }}">
+                    <input type="date" name="date_from" value="{{ date_from or '' }}" placeholder="From" aria-label="Start date">
+                    <span class="date-separator">to</span>
+                    <input type="date" name="date_to" value="{{ date_to or '' }}" placeholder="To" aria-label="End date">
+                    <button type="submit" class="btn-primary">Apply</button>
+                </form>
             </div>
         </div>
 
@@ -39,7 +72,7 @@
 
         <!-- Section 3: Transaction History -->
         <div class="profile-card">
-            <h2 class="section-title">Transaction History</h2>
+            <h2 class="section-title">Transaction History {% if active_preset != 'all-time' %}— {{ filter_labels[active_preset] }}{% endif %}</h2>
             <div class="table-wrapper">
                 <table class="transactions-table">
                     <thead>
@@ -62,6 +95,10 @@
                             </td>
                             <td class="amount-col">₹{{ "%.2f"|format(txn.amount) }}</td>
                         </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="empty-state">No transactions in this period</td>
+                        </tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -70,7 +107,7 @@
 
         <!-- Section 4: Category Breakdown -->
         <div class="profile-card">
-            <h2 class="section-title">Category Breakdown</h2>
+            <h2 class="section-title">Category Breakdown {% if active_preset != 'all-time' %}— {{ filter_labels[active_preset] }}{% endif %}</h2>
             <div class="category-bars">
                 {% for cat in categories %}
                 <div class="category-row">
@@ -82,6 +119,8 @@
                         ₹{{ "%.2f"|format(cat.total) }} ({{ cat.percentage }}%)
                     </span>
                 </div>
+                {% else %}
+                <div class="empty-state">No expenses in this period</div>
                 {% endfor %}
             </div>
         </div>
